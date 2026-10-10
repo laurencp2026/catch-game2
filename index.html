@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#fff3d9">
+<title>Kettle & Crumb — Biscuit Catch!</title>
+<style>
+:root { --cream:#fff3d9; --pink:#ff7895; --red:#ed5276; --brown:#613c30; --gold:#ffcb58; --mint:#8be0bc; }
+* { box-sizing:border-box; }
+html,body { margin:0;width:100%;height:100%;overflow:hidden;overscroll-behavior:none;font-family:ui-rounded,"Trebuchet MS",system-ui,sans-serif;background:var(--cream);color:var(--brown);-webkit-tap-highlight-color:transparent; }
+body { display:flex;align-items:center;justify-content:center; }
+button { font:inherit;cursor:pointer;touch-action:manipulation; }
+#game { position:relative;width:100%;height:100%;max-width:520px;max-height:1000px;overflow:hidden;isolation:isolate;background:linear-gradient(180deg,#ffe5e7 0%,#fff0cf 60%,#ffdaa5 100%); }
+@supports (height:100dvh) { #game { height:min(100dvh,1000px); } }
+#scene { position:absolute;inset:0;width:100%;height:100%; }
+.hud { position:absolute;top:max(15px,env(safe-area-inset-top));left:16px;right:16px;display:flex;justify-content:space-between;align-items:center;z-index:4;pointer-events:none; }
+.pill { padding:9px 14px;border-radius:18px;background:rgba(255,255,255,.83);border:2px solid rgba(255,255,255,.9);box-shadow:0 4px 0 rgba(104,65,43,.08);font-weight:900;font-size:13px; }
+.pill strong { font-size:18px;color:var(--red); }
+.icon-button { pointer-events:auto;width:42px;height:42px;border:2px solid white;border-radius:50%;background:white;color:var(--brown);font-size:19px;box-shadow:0 4px 0 rgba(104,65,43,.08); }
+.screen { position:absolute;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;padding:30px 24px;text-align:center; }
+.panel { width:100%;max-width:380px;padding:26px 22px 28px;background:rgba(255,251,240,.94);border:3px solid white;border-radius:32px;box-shadow:0 12px 0 rgba(119,67,44,.10),0 22px 45px rgba(119,67,44,.10);animation:pop .45s cubic-bezier(.2,1.5,.4,1) both; }
+@keyframes pop { from{opacity:0;transform:scale(.84) translateY(15px)} to{opacity:1;transform:scale(1) translateY(0)} }
+.brand { font-size:12px;font-weight:1000;letter-spacing:2.5px;color:#a36a50;text-transform:uppercase; }
+.logo { font-size:clamp(32px,9vw,47px);line-height:.99;font-weight:1000;letter-spacing:-2px;margin:13px 0 5px; }
+.logo span { color:var(--red); }
+.subtitle { font-size:14px;line-height:1.6;margin:12px auto;max-width:280px; }
+.hero { font-size:85px;line-height:1.2;margin:6px 0 4px;filter:drop-shadow(0 8px 0 rgba(129,73,43,.08));animation:float 2.4s ease-in-out infinite; }
+@keyframes float { 0%,100%{transform:translateY(0) rotate(-4deg)} 50%{transform:translateY(-9px) rotate(4deg)} }
+.play { display:block;width:100%;margin-top:19px;border:0;border-radius:19px;padding:17px 20px;color:white;background:linear-gradient(180deg,#ff8ca2,#ef557b);font-size:20px;font-weight:1000;letter-spacing:.4px;box-shadow:0 6px 0 #c94365,0 10px 20px #ef557b35;transition:transform .12s,box-shadow .12s; }
+.play:active { transform:translateY(4px);box-shadow:0 2px 0 #c94365; }
+.small-note { font-size:11px;color:#a17a67;margin-top:18px; }
+.instructions { display:flex;gap:8px;justify-content:center;margin-top:15px; }
+.instruction { flex:1;padding:10px 5px;border-radius:14px;background:#fff0d8;font-size:11px;font-weight:800;line-height:1.7; }
+.instruction b { font-size:20px;display:block; }
+#gameover .hero { font-size:65px; }
+.result { margin:15px 0 5px;border-radius:18px;background:#fff0d8;padding:14px;display:flex;justify-content:space-around; }
+.result div { font-size:12px;font-weight:800; }
+.result strong { display:block;font-size:27px;color:var(--red); }
+.hidden { display:none!important; }
+#toast { position:absolute;z-index:3;top:100px;left:0;right:0;text-align:center;font-weight:1000;font-size:22px;color:#bd5b48;text-shadow:0 2px white;opacity:0;pointer-events:none; }
+#toast.show { animation:toast .9s ease-out both; }
+@keyframes toast { 0%{opacity:0;transform:translateY(10px) scale(.8)} 20%{opacity:1;transform:translateY(0) scale(1.1)} 75%{opacity:1} 100%{opacity:0;transform:translateY(-20px)} }
+.bottom-hint { position:absolute;bottom:max(17px,env(safe-area-inset-bottom));left:0;right:0;text-align:center;z-index:2;color:#95654d;font-size:11px;font-weight:800;pointer-events:none; }
+@media (max-height:650px) { .panel{padding:15px 18px 18px}.hero{font-size:58px}.logo{font-size:34px;margin:8px 0 3px}.subtitle{margin:7px auto}.play{padding:12px;margin-top:12px}.instructions{margin-top:9px}.small-note{margin-top:10px} }
+</style>
+</head>
+<body>
+<main id="game" aria-label="Kettle and Crumb Biscuit Catch game">
+<canvas id="scene"></canvas>
+<div class="hud hidden" id="hud"><div class="pill">🍪 SCORE <strong id="score">0</strong></div><div class="pill">✨ <strong id="level">1</strong> <span style="font-size:11px">LEVEL</span></div><button class="icon-button" id="soundBtn" aria-label="Toggle sound">🔊</button></div>
+<div id="toast"></div>
+<section class="screen" id="title"><div class="panel">
+<div class="brand">☕ Kettle & Crumb ☕</div><div class="hero" aria-hidden="true">🧺</div>
+<h1 class="logo">BISCUIT<br><span>CATCH!</span></h1>
+<div style="font-size:14px;font-weight:900;color:#bf8165">A little bakery game for Lauren ♡</div>
+<p class="subtitle">Fresh biscuits are falling! Catch the goodies, dodge the burnt bakes, and become the star of the bakery.</p>
+<div class="instructions"><div class="instruction"><b>👆</b>Tap a side<br>to move</div><div class="instruction"><b>↔️</b>Swipe<br>to dash</div><div class="instruction"><b>⌨️</b>Arrow keys<br>or A / D</div></div>
+<button class="play" id="playBtn">LET'S BAKE! ✨</button><div class="small-note">YOUR PERSONAL BEST: <strong id="titleBest">0</strong> 🍪</div>
+</div></section>
+<section class="screen hidden" id="gameover"><div class="panel">
+<div class="brand">KETTLE & CRUMB</div><div class="hero" id="endEmoji">🥺</div>
+<h2 class="logo" style="font-size:38px;margin-top:5px">OVEN'S<br><span>CLOSED!</span></h2>
+<p class="subtitle" id="endMessage">Every baker needs a little break!</p>
+<div class="result"><div>THIS BAKE<strong id="finalScore">0</strong></div><div>PERSONAL BEST<strong id="finalBest">0</strong></div></div>
+<button class="play" id="againBtn">BAKE AGAIN! 🍪</button><button id="homeBtn" style="margin-top:15px;border:0;background:transparent;color:#986c57;font-weight:900;padding:8px">Back to the bakery</button>
+</div></section>
+<div class="bottom-hint hidden" id="hint">CATCH BISCUITS 🍪 · AVOID BURNT BAKES 🔥</div>
+</main>
+<script>
+(() => {
+"use strict";
+const $ = id => document.getElementById(id);
+const canvas = $("scene"), ctx = canvas.getContext("2d"), game = $("game");
+let W=360,H=700,dpr=1,running=false,lastTime=0,elapsed=0,score=0,best=loadBest(),level=1,lives=3,spawnTimer=0,items=[],particles=[],keys={},pointerDown=null;
+let player={x:180,y:600,targetX:180,w:80,h:65,invincible:0};
+let soundEnabled=true,audio=null,shake=0,combo=0,comboTimer=0,frame=0;
+function loadBest(){try{return Number(localStorage.getItem("kettleCrumbBest"))||0}catch(_){return 0}}
+function saveBest(){try{localStorage.setItem("kettleCrumbBest",String(best))}catch(_){}}
+function resize(){const rect=game.getBoundingClientRect();W=rect.width;H=rect.height;dpr=Math.min(window.devicePixelRatio||1,2);canvas.width=Math.round(W*dpr);canvas.height=Math.round(H*dpr);canvas.style.width=W+"px";canvas.style.height=H+"px";ctx.setTransform(dpr,0,0,dpr,0,0);player.y=H-Math.max(95,H*.15);player.x=Math.max(player.w/2,Math.min(W-player.w/2,player.x));player.targetX=Math.max(player.w/2,Math.min(W-player.w/2,player.targetX));draw()}
+window.addEventListener("resize",resize);
+function initAudio(){if(!audio){const AC=window.AudioContext||window.webkitAudioContext;if(AC)audio=new AC()}if(audio&&audio.state==="suspended")audio.resume()}
+function beep(freq=600,duration=.09,type="sine",volume=.055){if(!soundEnabled||!audio)return;try{const osc=audio.createOscillator(),gain=audio.createGain();osc.type=type;osc.frequency.setValueAtTime(freq,audio.currentTime);gain.gain.setValueAtTime(volume,audio.currentTime);gain.gain.exponentialRampToValueAtTime(.001,audio.currentTime+duration);osc.connect(gain);gain.connect(audio.destination);osc.start();osc.stop(audio.currentTime+duration)}catch(_){}}
+function jingle(){[523,659,784,1046].forEach((f,i)=>setTimeout(()=>beep(f,.14,"sine",.045),i*90))}
+const treats=[{emoji:"🍪",points:10,type:"good"},{emoji:"🧁",points:15,type:"good"},{emoji:"🥐",points:10,type:"good"},{emoji:"🍩",points:20,type:"good"},{emoji:"🍓",points:15,type:"good"},{emoji:"🔥",points:0,type:"bad"},{emoji:"💣",points:0,type:"bad"}];
+function start(){initAudio();running=true;elapsed=0;score=0;level=1;lives=3;spawnTimer=.25;items=[];particles=[];shake=0;combo=0;comboTimer=0;player.x=W/2;player.targetX=W/2;player.invincible=0;$("title").classList.add("hidden");$("gameover").classList.add("hidden");$("hud").classList.remove("hidden");$("hint").classList.remove("hidden");$("score").textContent="0";$("level").textContent="1";lastTime=performance.now();beep(600,.08);jingle();requestAnimationFrame(loop)}
+function endGame(){if(!running)return;running=false;if(score>best){best=score;saveBest()}$("finalScore").textContent=score;$("finalBest").textContent=best;$("titleBest").textContent=best;$("endEmoji").textContent=score>=best&&score>0?"🏆":"🥺";$("endMessage").textContent=score>=best&&score>0?"A brand-new bakery record, Lauren! You're a biscuit legend!":"Even the best bakers drop a biscuit. Fancy another go?";$("hud").classList.add("hidden");$("hint").classList.add("hidden");$("gameover").classList.remove("hidden");beep(180,.3,"triangle",.06)}
+function spawn(){const badChance=Math.min(.27,.12+elapsed*.0011);let t;if(Math.random()<badChance)t=treats[5+(Math.random()<.35?1:0)];else t=treats[Math.floor(Math.random()*5)];const r=17+Math.random()*7;items.push({x:24+Math.random()*Math.max(1,W-48),y:-35,r,emoji:t.emoji,type:t.type,points:t.points,speed:155+Math.min(230,elapsed*2.4)+Math.random()*55,rot:(Math.random()-.5)*.4,spin:(Math.random()-.5)*2.5,wobble:Math.random()*6})}
+function addParticles(x,y,color,count=9){for(let i=0;i<count;i++){const a=Math.random()*Math.PI*2,s=45+Math.random()*180;particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-45,life:.35+Math.random()*.45,max:.8,size:3+Math.random()*5,color})}}
+function toast(text){const t=$("toast");t.textContent=text;t.classList.remove("show");void t.offsetWidth;t.classList.add("show")}
+function update(dt){elapsed+=dt;level=1+Math.floor(elapsed/14);$("level").textContent=level;player.invincible=Math.max(0,player.invincible-dt);comboTimer=Math.max(0,comboTimer-dt);if(!comboTimer)combo=0;shake=Math.max(0,shake-dt*18);
+const speed=530;if(keys.ArrowLeft||keys.a||keys.A)player.targetX-=speed*dt;if(keys.ArrowRight||keys.d||keys.D)player.targetX+=speed*dt;player.targetX=Math.max(player.w/2+5,Math.min(W-player.w/2-5,player.targetX));player.x+=(player.targetX-player.x)*Math.min(1,dt*15);
+spawnTimer-=dt;const interval=Math.max(.30,.92-elapsed*.006);while(spawnTimer<=0){spawn();spawnTimer+=interval*(.75+Math.random()*.5)}
+for(let i=items.length-1;i>=0;i--){const it=items[i];it.y+=it.speed*dt;it.x+=Math.sin(elapsed*2+it.wobble)*16*dt;it.rot+=it.spin*dt;const dx=it.x-player.x,dy=it.y-player.y;
+if(Math.abs(dx)<player.w*.48+it.r*.5&&Math.abs(dy)<player.h*.44+it.r*.55){items.splice(i,1);if(it.type==="good"){combo++;comboTimer=1.7;const gained=it.points*(combo>=5?2:1);score+=gained;$("score").textContent=score;addParticles(it.x,it.y,"#f4a34e",11);beep(650+Math.min(combo,8)*55,.07,"sine",.04);if(combo===5){toast("SWEET STREAK! 2× ✨");jingle()}else if(combo===10)toast("SUPER BAKER! 🧁");else if(gained>=30)toast("YUMMY! +"+gained)}else if(player.invincible<=0){lives--;player.invincible=1.05;shake=.45;combo=0;comboTimer=0;addParticles(it.x,it.y,"#ed5276",15);beep(130,.24,"sawtooth",.055);toast(lives>0?"OH CRUMBS! ❤️":"BURNED! 🔥");if(lives<=0){endGame();return}}}else if(it.y>H+45)items.splice(i,1)}
+for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.life-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=230*dt;p.vx*=.98;if(p.life<=0)particles.splice(i,1)}}
+function roundRect(c,x,y,w,h,r){c.beginPath();c.roundRect(x,y,w,h,r);c.fill()}
+function drawBackground(){const grad=ctx.createLinearGradient(0,0,0,H);grad.addColorStop(0,"#ffe2e8");grad.addColorStop(.58,"#fff0d3");grad.addColorStop(1,"#ffd49f");ctx.fillStyle=grad;ctx.fillRect(0,0,W,H);ctx.save();ctx.globalAlpha=.24;for(let y=20;y<H;y+=65){for(let x=15+(Math.floor(y/65)%2)*28;x<W;x+=56){ctx.fillStyle=(Math.floor(x/56+y/65)%2)?"#ff9aab":"#ffffff";ctx.beginPath();ctx.arc(x,y,3,0,Math.PI*2);ctx.fill()}}ctx.restore();const floorY=H-45;ctx.fillStyle="#a96a50";ctx.fillRect(0,floorY,W,45);ctx.fillStyle="#fff7df";ctx.fillRect(0,floorY,W,7);for(let x=0;x<W;x+=42){ctx.fillStyle=(x/42%2===0)?"#ff8199":"#ffe5e7";ctx.beginPath();ctx.moveTo(x,floorY+7);ctx.lineTo(x+42,floorY+7);ctx.lineTo(x+35,floorY+22);ctx.lineTo(x+7,floorY+22);ctx.closePath();ctx.fill()}}
+function drawPlayer(){const x=player.x,y=player.y;ctx.save();ctx.translate(x,y);if(player.invincible>0&&Math.floor(player.invincible*13)%2===0)ctx.globalAlpha=.45;ctx.fillStyle="#a8674a30";ctx.beginPath();ctx.ellipse(0,30,47,10,0,0,Math.PI*2);ctx.fill();ctx.fillStyle="#b96f42";ctx.beginPath();ctx.moveTo(-40,-14);ctx.lineTo(40,-14);ctx.lineTo(32,25);ctx.quadraticCurveTo(0,39,-32,25);ctx.closePath();ctx.fill();ctx.strokeStyle="#e9b276";ctx.lineWidth=5;for(let xx=-25;xx<=25;xx+=13){ctx.beginPath();ctx.moveTo(xx,-12);ctx.lineTo(xx*.8,28);ctx.stroke()}ctx.strokeStyle="#e8ba80";ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(-36,-14);ctx.quadraticCurveTo(0,-26,36,-14);ctx.stroke();ctx.fillStyle="#fff0d1";roundRect(ctx,-20,1,40,17,6);ctx.fillStyle="#b96f42";ctx.font="bold 9px sans-serif";ctx.textAlign="center";ctx.fillText("K&C",0,12);ctx.fillStyle="#fffdf6";ctx.beginPath();ctx.ellipse(0,-32,26,8,0,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(-10,-34,11,Math.PI,Math.PI*2);ctx.arc(2,-40,13,Math.PI,Math.PI*2);ctx.arc(13,-34,10,Math.PI,Math.PI*2);ctx.fill();ctx.fillStyle="#ff8199";ctx.beginPath();ctx.ellipse(0,-29,24,4,0,0,Math.PI*2);ctx.fill();ctx.restore()}
+function draw(){if(!ctx)return;ctx.clearRect(0,0,W,H);ctx.save();if(shake>0)ctx.translate((Math.random()-.5)*shake*9,(Math.random()-.5)*shake*9);drawBackground();ctx.save();ctx.globalAlpha=.6;for(let i=0;i<5;i++){const x=(i+.5)*W/5;ctx.fillStyle=["#ff8ea5","#ffd064","#8edcbb","#bda4ff","#ff9d70"][i];ctx.beginPath();ctx.arc(x,88+Math.sin(elapsed+i)*3,4,0,Math.PI*2);ctx.fill()}ctx.restore();for(const it of items){ctx.save();ctx.translate(it.x,it.y);ctx.rotate(it.rot);ctx.font=`${it.r*2.15}px "Apple Color Emoji","Segoe UI Emoji",sans-serif`;ctx.textAlign="center";ctx.textBaseline="middle";ctx.shadowColor="#94553835";ctx.shadowBlur=5;ctx.shadowOffsetY=3;ctx.fillText(it.emoji,0,0);ctx.restore()}for(const p of particles){ctx.globalAlpha=Math.max(0,p.life/p.max);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fill()}ctx.globalAlpha=1;drawPlayer();if(running){ctx.textAlign="center";ctx.textBaseline="middle";ctx.font="21px sans-serif";for(let i=0;i<3;i++){ctx.globalAlpha=i<lives?1:.25;ctx.fillText("❤️",W/2+(i-1)*31,Math.max(90,H*.14))}ctx.globalAlpha=1}ctx.restore()}
+function loop(now){if(!running)return;const dt=Math.min(.033,(now-lastTime)/1000||.016);lastTime=now;frame++;update(dt);draw();if(running)requestAnimationFrame(loop)}
+function moveTo(clientX){const rect=game.getBoundingClientRect();player.targetX=Math.max(player.w/2+5,Math.min(W-player.w/2-5,clientX-rect.left))}
+game.addEventListener("pointerdown",e=>{if(!running||e.target.closest("button"))return;pointerDown={x:e.clientX,y:e.clientY,time:performance.now()};moveTo(e.clientX)});
+game.addEventListener("pointermove",e=>{if(running&&pointerDown)moveTo(e.clientX)});
+game.addEventListener("pointerup",e=>{if(!running||!pointerDown){pointerDown=null;return}const dx=e.clientX-pointerDown.x;if(Math.abs(dx)>45){player.targetX=Math.max(player.w/2+5,Math.min(W-player.w/2-5,player.targetX+Math.sign(dx)*W*.28));beep(360,.045,"triangle",.025)}pointerDown=null});
+game.addEventListener("pointercancel",()=>pointerDown=null);
+window.addEventListener("keydown",e=>{if(["ArrowLeft","ArrowRight"," "].includes(e.key))e.preventDefault();keys[e.key]=true;if(e.key===" "&&!running)start()});
+window.addEventListener("keyup",e=>{keys[e.key]=false});
+$("playBtn").addEventListener("click",start);$("againBtn").addEventListener("click",start);
+$("homeBtn").addEventListener("click",()=>{$("gameover").classList.add("hidden");$("title").classList.remove("hidden");$("titleBest").textContent=best;items=[];particles=[];draw()});
+$("soundBtn").addEventListener("click",()=>{soundEnabled=!soundEnabled;$("soundBtn").textContent=soundEnabled?"🔊":"🔇";if(soundEnabled){initAudio();beep(700,.07)}});
+$("titleBest").textContent=best;resize();
+function idle(now){if(!running){elapsed=now/1000;draw()}requestAnimationFrame(idle)}
+requestAnimationFrame(idle);
+})();
+</script>
+</body>
+</html>
